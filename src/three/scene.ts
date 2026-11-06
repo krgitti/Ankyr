@@ -82,7 +82,7 @@ export class MechanismScene {
   private targetExplode = 1;
   private view: ViewName = 'front';
   private cameraTarget = new THREE.Vector3(0, 0, 0);
-  private cameraGoal = new THREE.Vector3(0, 40, 320);
+  private cameraGoal = new THREE.Vector3(0, 30, 430);
   private transparent = false;
   private pointerMeshes = new Map<string, THREE.Object3D>();
   private planetMarks = new Map<string, THREE.Object3D>();
@@ -108,7 +108,7 @@ export class MechanismScene {
     this.scene.fog = new THREE.Fog(0x0a0908, 500, 1400);
 
     this.camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 1, 4000);
-    this.camera.position.set(0, 40, 320);
+    this.camera.position.set(0, 30, 430);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
@@ -313,81 +313,101 @@ export class MechanismScene {
   // ── Back dials ─────────────────────────────────────────────────────────
   private buildBackDials() {
     const z = BACK_PLATE_Z + 1.4;
-    const facingBack = new THREE.Group();
-    facingBack.rotation.y = Math.PI;
-    this.backGroup.add(facingBack);
 
-    const disc = (center: Vec2, radius: number, texture: THREE.Texture, zz: number) => {
+    /**
+     * Each back dial is a small assembly facing away from the viewer's front:
+     * a holder rotated by 180° about Y, carrying the engraved disc and its
+     * pointer. Both live in the same flipped frame, so the pointer's local
+     * rotation stays in the same convention as the front dial.
+     */
+    const holder = (center: Vec2, zz: number) => {
+      const g = new THREE.Group();
+      g.position.set(center.x, center.y, zz);
+      g.rotation.y = Math.PI;
+      this.backGroup.add(g);
+      return g;
+    };
+    const disc = (parent: THREE.Group, radius: number, texture: THREE.Texture, zz = 0) => {
       const mesh = new THREE.Mesh(
         new THREE.CircleGeometry(radius, 96),
         new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide, depthWrite: false }),
       );
-      mesh.position.set(center.x, center.y, zz);
-      facingBack.add(mesh);
+      mesh.position.set(0, 0, zz);
+      parent.add(mesh);
       return mesh;
     };
-    const pointer = (id: string, center: Vec2, len: number, zz: number, color = GOLD) => {
-      const mesh = new THREE.Mesh(makePointerGeometry(len, 1.5), new THREE.MeshStandardMaterial({ color, metalness: 0.9, roughness: 0.3 }));
-      mesh.position.set(center.x, center.y, zz);
-      facingBack.add(mesh);
+    const pointer = (parent: THREE.Group, id: string, len: number, zz: number, color = GOLD) => {
+      const mesh = new THREE.Mesh(
+        makePointerGeometry(len, 1.5),
+        new THREE.MeshStandardMaterial({ color, metalness: 0.9, roughness: 0.3 }),
+      );
+      mesh.position.set(0, 0, zz);
+      parent.add(mesh);
       this.pointerMeshes.set(id, mesh);
       return mesh;
     };
 
-    // Metonic spiral: 235 cells, five turns, month names every cell of turn 0.
-    const metonicTex = makeSpiralTexture({
-      cells: METONIC.months,
-      turns: METONIC.turns,
-      innerRadius: 18,
-      outerRadius: 30,
-      startAngleDeg: 90,
-      label: (i) => {
-        const e = METONIC_LAYOUT[i];
-        return e && e.monthOfYear === 1 ? GREEK_MONTHS_SHORT[e.month.greek] ?? '' : '';
-      },
-    });
-    disc(DIAL_CENTRES.metonic, 32, metonicTex, z);
-    pointer('metonic', DIAL_CENTRES.metonic, 30, z + 2.4);
+    // Metonic spiral: 235 cells, five turns, a month name at the start of each year.
+    const metonicHolder = holder(DIAL_CENTRES.metonic, z);
+    disc(
+      metonicHolder,
+      32,
+      makeSpiralTexture({
+        cells: METONIC.months,
+        turns: METONIC.turns,
+        innerRadius: 18,
+        outerRadius: 30,
+        startAngleDeg: 90,
+        label: (i) => {
+          const e = METONIC_LAYOUT[i];
+          return e && e.monthOfYear === 1 ? GREEK_MONTHS_SHORT[e.month.greek] ?? '' : '';
+        },
+      }),
+      0,
+    );
+    pointer(metonicHolder, 'metonic', 30, 2.6);
 
     // Saros spiral with the eclipse glyphs.
-    const sarosTex = makeSpiralTexture({
-      cells: 223,
-      turns: 4,
-      innerRadius: 16,
-      outerRadius: 30,
-      startAngleDeg: 90,
-      mark: (i) => {
-        const g = GLYPHS.find((x) => x.month === i + 1);
-        if (!g) return null;
-        return { glyph: g.lunar ? 'Σ' : 'Η', strong: g.lunar };
-      },
-    });
-    disc(DIAL_CENTRES.saros, 32, sarosTex, z);
-    pointer('saros', DIAL_CENTRES.saros, 30, z + 2.4);
-
-    // Olympiad: four years with the games.
+    const sarosHolder = holder(DIAL_CENTRES.saros, z);
     disc(
-      DIAL_CENTRES.olympiad,
+      sarosHolder,
+      32,
+      makeSpiralTexture({
+        cells: 223,
+        turns: 4,
+        innerRadius: 16,
+        outerRadius: 30,
+        startAngleDeg: 90,
+        mark: (i) => {
+          const g = GLYPHS.find((x) => x.month === i + 1);
+          if (!g) return null;
+          return { glyph: g.lunar ? 'Σ' : 'Η', strong: g.lunar };
+        },
+      }),
+      0,
+    );
+    pointer(sarosHolder, 'saros', 30, 2.6);
+
+    // Olympiad: four years, with the games of the periodos.
+    const olympiadHolder = holder(DIAL_CENTRES.olympiad, z);
+    disc(
+      olympiadHolder,
       15,
       makeSectorDialTexture(['Ι', 'ΙΙ', 'ΙΙΙ', 'ΙV'], {
         sublabels: [['ΟΛΥΜΠΙΑ'], ['ΙΣΘΜΙΑ', 'ΝΕΜΕΑ'], ['ΠΥΘΙΑ'], ['ΙΣΘΜΙΑ', 'ΝΕΜΕΑ']],
       }),
-      z - 0.2,
     );
-    pointer('olympiad', DIAL_CENTRES.olympiad, 14, z + 1.6, 0xb98b4a);
+    pointer(olympiadHolder, 'olympiad', 14, 1.8, 0xb98b4a);
 
     // Callippic: 76 years in four Metonic quarters.
-    disc(
-      DIAL_CENTRES.callippic,
-      13,
-      makeSectorDialTexture(['Α', 'Β', 'Γ', 'Δ'], { title: 'ΚΑΛΛΙΠΠΟΣ' }),
-      z - 0.2,
-    );
-    pointer('callippic', DIAL_CENTRES.callippic, 12, z + 1.6, 0xb98b4a);
+    const callippicHolder = holder(DIAL_CENTRES.callippic, z);
+    disc(callippicHolder, 13, makeSectorDialTexture(['Α', 'Β', 'Γ', 'Δ'], { title: 'ΚΑΛΛΙΠΠΟΣ' }));
+    pointer(callippicHolder, 'callippic', 12, 1.8, 0xb98b4a);
 
-    // Exeligmos: three sectors, +0h, +8h, +16h.
-    disc(DIAL_CENTRES.exeligmos, 11, makeSectorDialTexture(['0', 'Η', 'ΙϚ'], { title: 'ΕΞΕΛΙΓΜΟΣ' }), z - 0.2);
-    pointer('exeligmos', DIAL_CENTRES.exeligmos, 10, z + 1.6, 0xb98b4a);
+    // Exeligmos: three sectors, 0 h, +8 h, +16 h.
+    const exeligmosHolder = holder(DIAL_CENTRES.exeligmos, z);
+    disc(exeligmosHolder, 11, makeSectorDialTexture(['0', 'Η', 'ΙϚ'], { title: 'ΕΞΕΛΙΓΜΟΣ' }));
+    pointer(exeligmosHolder, 'exeligmos', 10, 1.8, 0xb98b4a);
   }
 
   // ── Update from a readout ──────────────────────────────────────────────
@@ -476,13 +496,15 @@ export class MechanismScene {
   // ── Interaction ────────────────────────────────────────────────────────
   setView(view: ViewName) {
     this.view = view;
+    // Distances are set so the 284 mm face fits the 38° field of view with a
+    // margin: 2·430·tan(19°) ≈ 296 mm of visible height.
     const v = {
-      front: new THREE.Vector3(0, 26, 330),
-      back: new THREE.Vector3(0, 26, -330),
-      side: new THREE.Vector3(330, 40, 10),
-      top: new THREE.Vector3(0, 340, 12),
-      exploded: new THREE.Vector3(120, 90, 330),
-      mechanism: new THREE.Vector3(0, 26, 330),
+      front: new THREE.Vector3(0, 30, 430),
+      back: new THREE.Vector3(0, 30, -430),
+      side: new THREE.Vector3(430, 40, 10),
+      top: new THREE.Vector3(0, 430, 12),
+      exploded: new THREE.Vector3(150, 110, 470),
+      mechanism: new THREE.Vector3(0, 30, 430),
     }[view];
     this.cameraGoal.copy(v);
     this.easing = 1.1;

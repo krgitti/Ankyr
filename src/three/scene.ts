@@ -118,6 +118,9 @@ export class MechanismScene {
   private selected: string | null = null;
   private xray = false;
   private labels = true;
+  private plates = true;
+  private showHypothetical = true;
+  private finish: 'new' | 'patina' = 'new';
   private explode = 1;
   private targetExplode = 1;
   private view: ViewName = 'front';
@@ -701,6 +704,55 @@ export class MechanismScene {
   setLabels(on: boolean) {
     this.labels = on;
     this.labelGroup.visible = on;
+  }
+
+  /** Plates and case: hide them to see the trains alone. */
+  setPlates(on: boolean) {
+    this.plates = on;
+    for (const mat of this.backPanelMaterials) {
+      mat.visible = on;
+    }
+    if (this.plateMesh) this.plateMesh.visible = on;
+    for (const mesh of this.caseGroup.children) {
+      const m = mesh as THREE.Mesh;
+      if (m === this.plateMesh) continue;
+      m.visible = on;
+    }
+  }
+
+  /** Wheels of grade D are hypotheses about the artefact, not parts of it. */
+  setHypothetical(on: boolean) {
+    this.showHypothetical = on;
+    for (const [, entry] of this.gears) {
+      const grade = GEAR.get(entry.id)!.grade;
+      const visible = on || grade !== 'D';
+      entry.mesh.visible = visible;
+      entry.ring.visible = visible;
+    }
+  }
+
+  /** Museum finish: fresh bronze, or the corroded surface of the artefact. */
+  setFinish(finish: 'new' | 'patina') {
+    this.finish = finish;
+    for (const [, entry] of this.gears) {
+      const g = GEAR.get(entry.id)!;
+      if (finish === 'new') {
+        entry.solid.color = new THREE.Color(g.grade === 'D' ? 0xd08a6a : g.surviving ? BRONZE : BRONZE_LIGHT);
+        entry.solid.roughness = 0.36;
+      } else {
+        // Verdigris over cuprite: greener, duller, and slightly lighter where
+        // the bronze has corroded through.
+        entry.solid.color = new THREE.Color(
+          g.surviving ? 0x7f8a63 : g.grade === 'D' ? 0x8d6f5a : 0x93a07c,
+        );
+        entry.solid.roughness = 0.62;
+      }
+      entry.solid.needsUpdate = true;
+    }
+    for (const mat of this.caseMaterials) {
+      mat.color = new THREE.Color(finish === 'new' ? BRONZE_DARK : 0x5c5a42);
+      mat.needsUpdate = true;
+    }
   }
 
   select(id: string | null) {

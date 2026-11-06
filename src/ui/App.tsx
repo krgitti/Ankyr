@@ -1,14 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { mechanism } from '../core/mechanism';
+import { mechanism, gearRows } from '../core/mechanism';
+import { GEAR as GEAR_INDEX_DATA } from '../core/gears';
+import { placement as placementOf } from '../core/layout';
+import { EVIDENCE } from '../core/sources';
 import { EPOCH_JD, DAYS_PER_YEAR, jdToJulian, julianToJD, formatJD, formatYear } from '../core/time';
+import { nextSyzygy } from '../core/ephemeris';
+import { nextEclipse } from '../core/sky';
 import SceneView from './SceneView';
 import { TRAIN_COLOURS, VIEW_NAMES } from '../three/scene';
-import { AboutPanel, AstronomyPanel, CalendarPanel, GearsPanel, GearInspector } from './panels';
+import { AboutPanel, AstronomyPanel, CalendarPanel, GearsPanel, GearInspector, HorizonPanel } from './panels';
 import ValidationPanel from './ValidationPanel';
 import type { ViewName } from '../three/scene';
 
 const TABS = [
   { id: 'sky', label: 'Céu' },
+  { id: 'horizon', label: 'Horizonte' },
   { id: 'calendar', label: 'Calendário' },
   { id: 'gears', label: 'Engrenagens' },
   { id: 'validation', label: 'Validação' },
@@ -87,6 +93,9 @@ export default function App() {
   const [xray, setXray] = useState(true);
   const [explode, setExplode] = useState(1);
   const [labels, setLabels] = useState(true);
+  const [plates, setPlates] = useState(true);
+  const [hypothetical, setHypothetical] = useState(true);
+  const [finish, setFinish] = useState<'new' | 'patina'>('new');
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('sky');
 
@@ -119,8 +128,15 @@ export default function App() {
   const onSelect = useCallback((id: string | null) => setSelected(id), []);
 
   const step = (days: number) => setJd((v) => v + days);
+  const setHour = (h: number) => setJd((v) => Math.floor(v - 0.5) + 0.5 + h / 24);
+  const jumpToday = () => setJd(Date.now() / 86400000 + 2440587.5);
+  const jumpFullMoon = () => setJd((v) => nextSyzygy(v + 0.5, 180));
+  const jumpNewMoon = () => setJd((v) => nextSyzygy(v + 0.5, 0));
+  const jumpEclipse = () => setJd((v) => nextEclipse(v + 0.5, 'solar') ?? v);
+  const jumpSaros = (sign: number) => setJd((v) => v + sign * 223 * SYNODIC);
   const date = jdToJulian(jd);
   const [y, m, d] = [date.year, date.month, Math.floor(date.day)];
+  const hourOfDay = (date.day % 1) * 24;
   const setDate = (field: 'year' | 'month' | 'day', value: number) => {
     const next = { year: y, month: m, day: d, [field]: value };
     if (next.month < 1 || next.month > 12) return;
@@ -167,6 +183,17 @@ export default function App() {
               className="year"
             />
           </div>
+          <input
+            type="number"
+            className="hour"
+            value={hourOfDay.toFixed(2)}
+            min={0}
+            max={23.99}
+            step={0.5}
+            onChange={(e) => setHour(Number(e.target.value))}
+            aria-label="hora"
+            title="hora do dia (tempo local do meridiano de referência)"
+          />
           <div className="date-labels">
             <span>{formatYear(y)}</span>
             <span className="mono">JD {formatJD(jd, true)}</span>
@@ -191,6 +218,9 @@ export default function App() {
             xray={xray}
             explode={explode}
             labels={labels}
+            plates={plates}
+            hypothetical={hypothetical}
+            finish={finish}
             selected={selected}
             onSelect={onSelect}
           />
@@ -207,6 +237,19 @@ export default function App() {
             </button>
             <button className={labels ? 'active' : ''} onClick={() => setLabels((v) => !v)}>
               Nomes
+            </button>
+            <button className={plates ? 'active' : ''} onClick={() => setPlates((v) => !v)} title="Placas e caixa">
+              Placas
+            </button>
+            <button
+              className={hypothetical ? 'active' : ''}
+              onClick={() => setHypothetical((v) => !v)}
+              title="Rodas de grau D (hipótese) — as que não existem no artefacto"
+            >
+              Hipotéticas
+            </button>
+            <button className={finish === 'patina' ? 'active' : ''} onClick={() => setFinish((f) => (f === 'new' ? 'patina' : 'new'))}>
+              {finish === 'new' ? 'Bronze novo' : 'Pátina'}
             </button>
             <label className="layer-slider" title="Afasta as rodas ao longo do eixo do mecanismo">
               <span>camadas</span>
@@ -231,6 +274,7 @@ export default function App() {
               ))}
             </div>
           )}
+          {selected && <GearCard id={selected} onOpen={() => setTab('gears')} />}
           <div className="scene-hint">
             arraste para orbitar · roda do rato para ampliar · clique numa engrenagem (clique outra vez para a que está atrás)
           </div>
@@ -246,6 +290,7 @@ export default function App() {
           </nav>
           <div className="panel-scroll">
             {tab === 'sky' && <AstronomyPanel readout={readout} />}
+            {tab === 'horizon' && <HorizonPanel readout={readout} />}
             {tab === 'calendar' && <CalendarPanel readout={readout} />}
             {tab === 'gears' && (
               <>
@@ -282,15 +327,64 @@ export default function App() {
           </div>
         </div>
         <div className="transport-steps">
+          <button onClick={jumpToday} title="Ir para a data de hoje">hoje</button>
+          <button onClick={jumpNewMoon} title="Próxima Lua nova">Lua nova</button>
+          <button onClick={jumpFullMoon} title="Próxima Lua cheia">Lua cheia</button>
+          <button onClick={jumpEclipse} title="Próximo eclipse solar">eclipse</button>
+          <button onClick={() => jumpSaros(-1)} title="Um Saros antes">−Saros</button>
+          <button onClick={() => jumpSaros(1)} title="Um Saros depois">+Saros</button>
+          <span className="sep" />
           <button onClick={() => step(-1)}>−1 d</button>
           <button onClick={() => step(1)}>+1 d</button>
-          <button onClick={() => step(SYNODIC)}>+1 mês</button>
-          <button onClick={() => step(DAYS_PER_YEAR.toNumber())}>+1 ano</button>
+          <button onClick={() => step(-SYNODIC)} title="Uma lunação antes">−1 mês</button>
+          <button onClick={() => step(SYNODIC)} title="Uma lunação depois">+1 mês</button>
+          <button onClick={() => step(-DAYS_PER_YEAR.toNumber())} title="Um ano antes">−1 ano</button>
+          <button onClick={() => step(DAYS_PER_YEAR.toNumber())} title="Um ano depois">+1 ano</button>
           <button onClick={() => step(DAYS_PER_YEAR.toNumber() * 10)}>+10 a</button>
           <button onClick={() => step(DAYS_PER_YEAR.toNumber() * 100)}>+1 século</button>
         </div>
         <Crank onTurn={(turns) => setJd((v) => v + turns * DAYS_PER_CRANK_TURN)} />
       </footer>
+    </div>
+  );
+}
+
+const GEAR_ROWS = new Map(gearRows().map((r) => [r.id, r]));
+const gradeColour = (g: string) => EVIDENCE[(g as 'A') ?? 'C']?.color ?? '#e8b34a';
+
+function GearCard({ id, onOpen }: { id: string; onOpen: () => void }) {
+  const row = GEAR_ROWS.get(id);
+  const gear = GEAR_INDEX_DATA.get(id);
+  if (!row || !gear) return null;
+  const place = placementOf(id);
+  return (
+    <div className="gear-card">
+      <div className="gear-card-head">
+        <b>{id}</b>
+        <span className="mono">{gear.teeth} dentes</span>
+        <span className="grade" style={{ color: gradeColour(gear.grade), borderColor: gradeColour(gear.grade) }}>
+          {gear.grade}
+        </span>
+      </div>
+      <p className="gear-card-role">{gear.role}</p>
+      <div className="gear-card-grid">
+        <span>taxa</span>
+        <b className="mono">
+          {row.turnsPerYear >= 0 ? '' : '−'}
+          {Math.abs(row.turnsPerYear).toFixed(4)} vol./ano
+        </b>
+        <span>período</span>
+        <b className="mono">{row.periodYears ? `${row.periodYears.toFixed(3)} a` : '—'}</b>
+        <span>módulo</span>
+        <b className="mono">{place.module.toFixed(2)} mm</b>
+        <span>posição</span>
+        <b className="mono">
+          {place.axis.x.toFixed(1)}, {place.axis.y.toFixed(1)} · z {place.z.toFixed(1)}
+        </b>
+      </div>
+      <button className="gear-card-open" onClick={onOpen}>
+        ficha completa →
+      </button>
     </div>
   );
 }

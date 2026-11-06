@@ -8,11 +8,25 @@ interface Props {
   xray: boolean;
   explode: number;
   labels: boolean;
+  plates: boolean;
+  hypothetical: boolean;
+  finish: 'new' | 'patina';
   selected: string | null;
   onSelect: (id: string | null) => void;
 }
 
-export default function SceneView({ readout, view, xray, explode, labels, selected, onSelect }: Props) {
+export default function SceneView({
+  readout,
+  view,
+  xray,
+  explode,
+  labels,
+  plates,
+  hypothetical,
+  finish,
+  selected,
+  onSelect,
+}: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<MechanismScene | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +66,18 @@ export default function SceneView({ readout, view, xray, explode, labels, select
   useEffect(() => {
     scene.current?.setLabels(labels);
   }, [labels]);
+
+  useEffect(() => {
+    scene.current?.setPlates(plates);
+  }, [plates]);
+
+  useEffect(() => {
+    scene.current?.setHypothetical(hypothetical);
+  }, [hypothetical]);
+
+  useEffect(() => {
+    scene.current?.setFinish(finish);
+  }, [finish]);
 
   useEffect(() => {
     scene.current?.select(selected);

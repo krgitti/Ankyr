@@ -29,6 +29,17 @@ import {
 } from '../core/ephemeris';
 import { metonicDate, formatMetonic, olympiadDate, callippicDate } from '../core/calendar';
 import { GLYPH_BY_MONTH, glyphSymbol, describeGlyph, eclipseSeason, EYU_PER_MONTH } from '../core/eclipses';
+import {
+  PLACES,
+  bodyHorizontal,
+  riseSet,
+  dayLength,
+  localHour,
+  localEclipse,
+  nextLocalEclipse,
+  formatHour,
+} from '../core/sky';
+import { PROVENANCE } from '../core/provenance';
 import { EVIDENCE, SOURCE_LIST } from '../core/sources';
 import { GEAR, NEIGHBOURS } from '../core/gears';
 import { pitchR, moduleOf, axisKey, placement } from '../core/layout';
@@ -376,6 +387,40 @@ export function AboutPanel() {
         </p>
       </Section>
 
+      <Section title="De onde vêm os números" sub="medido · derivado · decidido — três colunas que nunca se misturam">
+        <p className="body-text">
+          {PROVENANCE.length} afirmações sustentam tudo o que se vê neste emulador. Para cada uma, a coluna
+          <b> medido</b> diz o que foi lido no artefacto, a coluna <b>derivado</b> o que é aritmética sobre essa
+          leitura, e a coluna <b>decidido</b> o que é escolha nossa — convenção, calibração, desenho. Uma
+          reconstrução torna-se desonesta no momento em que a terceira coluna aparece disfarçada de primeira.
+        </p>
+        <div className="prov-table">
+          <div className="prov-head">
+            <span>afirmação</span>
+            <span>medido no artefacto</span>
+            <span>derivado</span>
+            <span>decidido (nosso)</span>
+          </div>
+          {PROVENANCE.map((row) => {
+            const key = row.grade[0] as 'A' | 'B' | 'C' | 'D';
+            return (
+              <div className="prov-row" key={row.what}>
+                <div className="prov-what">
+                  <b>{row.what}</b>
+                  <span className="prov-grade" style={{ color: EVIDENCE[key].color, borderColor: EVIDENCE[key].color }}>
+                    {row.grade}
+                  </span>
+                  <span className="prov-source">{row.source}</span>
+                </div>
+                <div data-col="medido">{row.measured}</div>
+                <div data-col="derivado">{row.derived}</div>
+                <div data-col="decidido">{row.design}</div>
+              </div>
+            );
+          })}
+        </div>
+      </Section>
+
       <Section title="Graus de evidência" sub="nunca uma hipótese apresentada como facto">
         {(['A', 'B', 'C', 'D'] as const).map((g) => (
           <div className="evidence-card" key={g} style={{ borderColor: EVIDENCE[g].color }}>
@@ -445,3 +490,168 @@ export function AboutPanel() {
   );
 }
 
+
+// ── Horizon ──────────────────────────────────────────────────────────────
+const SkyDome = ({
+  sun,
+  moon,
+  sunRise,
+  sunSet,
+  size = 264,
+}: {
+  sun: { alt: number; az: number };
+  moon: { alt: number; az: number };
+  sunRise: number | null;
+  sunSet: number | null;
+  size?: number;
+}) => {
+  const c = size / 2;
+  const R = c - 16;
+  const pos = (alt: number, az: number) => {
+    const r = R * (1 - Math.max(-0.2, alt) / 90);
+    const a = (az * Math.PI) / 180;
+    return { x: c + r * Math.sin(a), y: c - r * Math.cos(a) };
+  };
+  const s = pos(sun.alt, sun.az);
+  const m = pos(moon.alt, moon.az);
+  const rim = (az: number) => pos(0, az);
+  const compass = (label: string, az: number, dx = 0, dy = 0) => {
+    const p = pos(-11, az);
+    return (
+      <text x={p.x + dx} y={p.y + dy} className="dome-label" textAnchor="middle" dominantBaseline="middle">
+        {label}
+      </text>
+    );
+  };
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} className="sky-dome" role="img" aria-label="céu do lugar">
+      <defs>
+        <radialGradient id="domeFill" cx="50%" cy="45%" r="60%">
+          <stop offset="0%" stopColor="#1d2735" />
+          <stop offset="70%" stopColor="#121821" />
+          <stop offset="100%" stopColor="#0b0f14" />
+        </radialGradient>
+      </defs>
+      <circle cx={c} cy={c} r={R} fill="url(#domeFill)" stroke="#3a3327" strokeWidth="1.2" />
+      {[30, 60].map((alt) => (
+        <circle key={alt} cx={c} cy={c} r={R * (1 - alt / 90)} fill="none" stroke="#2a2c30" strokeDasharray="2 4" />
+      ))}
+      {Array.from({ length: 12 }, (_, i) => i * 30).map((az) => {
+        const p = rim(az);
+        return (
+          <line key={az} x1={c} y1={c} x2={p.x} y2={p.y} stroke="#23262b" strokeWidth="0.7" />
+        );
+      })}
+      {sunRise !== null && (
+        <g>
+          <circle cx={rim(sunRise).x} cy={rim(sunRise).y} r="3.4" fill="#e8b95a" opacity="0.9" />
+          <circle cx={rim(sunSet!).x} cy={rim(sunSet!).y} r="3.4" fill="#c9793a" opacity="0.9" />
+        </g>
+      )}
+      {compass('N', 0, 0, -6)}
+      {compass('E', 90)}
+      {compass('S', 180, 0, 6)}
+      {compass('O', 270)}
+      <line x1={c} y1={c} x2={s.x} y2={s.y} stroke="#e8b95a" strokeWidth="0.7" opacity="0.5" />
+      <line x1={c} y1={c} x2={m.x} y2={m.y} stroke="#cfd4dc" strokeWidth="0.7" opacity="0.5" />
+      <circle cx={s.x} cy={s.y} r="6.5" fill="#e8b95a" />
+      <circle cx={m.x} cy={m.y} r="5.5" fill="#d8dde6" stroke="#0b0f14" strokeWidth="1" />
+      <text x={c} y={c + R * 0.06} className="dome-center" textAnchor="middle">
+        zénite
+      </text>
+    </svg>
+  );
+};
+
+export function HorizonPanel({ readout }: { readout: Readout }) {
+  const [placeId, setPlaceId] = useState(PLACES[0].id);
+  const place = PLACES.find((p) => p.id === placeId) ?? PLACES[0];
+  const jd = readout.jd;
+
+  const sun = useMemo(() => bodyHorizontal('sun', jd, place), [jd, place]);
+  const moon = useMemo(() => bodyHorizontal('moon', jd, place), [jd, place]);
+  const sunRS = useMemo(() => riseSet('sun', jd, place), [jd, place]);
+  const moonRS = useMemo(() => riseSet('moon', jd, place), [jd, place]);
+  const nextEcl = useMemo(() => nextLocalEclipse(jd, place), [jd, place]);
+  const dayLen = dayLength('sun', jd, place);
+  const hour = localHour(jd, place);
+  const eclDate = nextEcl ? jdToJulian(nextEcl.jd) : null;
+
+  return (
+    <div className="panel">
+      <Section title="Lugar de observação" sub="o mecanismo calcula longitudes; o lugar converte-as em céu">
+        <div className="place-chips">
+          {PLACES.map((p) => (
+            <button key={p.id} className={p.id === place.id ? 'active' : ''} onClick={() => setPlaceId(p.id)}>
+              {p.name}
+            </button>
+          ))}
+        </div>
+        <Row k="Latitude / longitude" v={`${place.lat.toFixed(2)}° ${place.lat >= 0 ? 'N' : 'S'} · ${place.lon.toFixed(2)}° E`} mono />
+        {place.note && <Row k="Nota" v={place.note} />}
+        <Row k="Hora local média" v={formatHour(hour)} mono />
+        <Row k="Duração do dia" v={`${dayLen.toFixed(2)} h`} mono />
+      </Section>
+
+      <Section title="Céu visto de cima" sub="zénite ao centro · norte no topo · o anel é o horizonte">
+        <SkyDome sun={sun} moon={moon} sunRise={sunRS.riseAz} sunSet={sunRS.setAz} />
+        <p className="fine">
+          Os pontos na borda são os azimutes de nascer (dourado) e ocaso (acobreado) do Sol. As linhas tracejadas
+          marcam 30° e 60° de altura. O lugar não entra em nenhum cálculo do mecanismo: é a camada que traduz
+          longitudes em céu.
+        </p>
+      </Section>
+
+      <Section title="Sol e Lua agora">
+        <Row k="Sol — altura / azimute" v={`${sun.alt.toFixed(1)}° · ${sun.az.toFixed(1)}°`} mono />
+        <Row k="Lua — altura / azimute" v={`${moon.alt.toFixed(1)}° · ${moon.az.toFixed(1)}°`} mono />
+        <Row
+          k="Sol nasce"
+          v={sunRS.rise !== null ? `${formatHour(localHour(sunRS.rise, place))} · azimute ${sunRS.riseAz!.toFixed(1)}°` : 'não nasce hoje'}
+          mono
+        />
+        <Row
+          k="Sol põe-se"
+          v={sunRS.set !== null ? `${formatHour(localHour(sunRS.set, place))} · azimute ${sunRS.setAz!.toFixed(1)}°` : 'não se põe hoje'}
+          mono
+        />
+        <Row
+          k="Lua nasce"
+          v={moonRS.rise !== null ? formatHour(localHour(moonRS.rise, place)) : 'não nasce hoje'}
+          mono
+        />
+        <Row
+          k="Lua põe-se"
+          v={moonRS.set !== null ? formatHour(localHour(moonRS.set, place)) : 'não se põe hoje'}
+          mono
+        />
+      </Section>
+
+      <Section title="Próximo eclipse" sub="estimativa topocêntrica com a paralaxe lunar">
+        {nextEcl && eclDate ? (
+          <>
+            <Row
+              k={nextEcl.kind === 'solar' ? 'Eclipse solar' : 'Eclipse lunar'}
+              v={`${Math.floor(eclDate.day)}/${eclDate.month}/${formatYear(eclDate.year)} · ${formatHour(localHour(nextEcl.jd, place))}`}
+              mono
+            />
+            <Row k="Altura no máximo" v={`${nextEcl.altitude.toFixed(1)}° · azimute ${nextEcl.azimuth.toFixed(1)}°`} mono />
+            <Row k="Separação dos discos" v={`${nextEcl.separation.toFixed(2)}° (contacto ${nextEcl.contact.toFixed(2)}°)`} mono />
+            <Row k="Magnitude local" v={`${(nextEcl.magnitude * 100).toFixed(0)} %`} mono />
+            <Row
+              k="Visível daqui"
+              v={<span className={nextEcl.visible ? 'ok' : 'warn'}>{nextEcl.visible ? 'sim' : 'não'} — {nextEcl.reason}</span>}
+            />
+          </>
+        ) : (
+          <p className="fine">Sem eclipse nos próximos 40 meses.</p>
+        )}
+        <p className="fine">
+          A paralaxe lunar desloca a Lua até 1° no céu, mais do que o diâmetro do Sol: por isso o teste geocêntrico
+          não chega para dizer se um eclipse se vê de um lugar. Esta estimativa corrige a paralaxe e compara a
+          separação dos discos com a soma dos raios aparentes. Fiável para sim/não e para o minuto, não para o segundo.
+        </p>
+      </Section>
+    </div>
+  );
+}

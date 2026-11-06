@@ -109,6 +109,7 @@ export class MechanismScene {
   private dialMeshes: THREE.Mesh[] = [];
   private pointerMeshes = new Map<string, THREE.Object3D>();
   private planetMarks = new Map<string, THREE.Object3D>();
+  private planetRings: THREE.Mesh[] = [];
   private moonBall: THREE.Group | null = null;
   private plateMesh: THREE.Mesh | null = null;
   private caseMaterials: THREE.MeshStandardMaterial[] = [];
@@ -407,6 +408,7 @@ export class MechanismScene {
       ring.position.set(0, 0, z - 1.0);
       ring.renderOrder = 5;
       this.frontGroup.add(ring);
+      this.planetRings.push(ring);
       const marker = new THREE.Mesh(
         new THREE.SphereGeometry(1.9, 20, 20),
         new THREE.MeshStandardMaterial({
@@ -678,6 +680,14 @@ export class MechanismScene {
     for (const mesh of this.dialMeshes) {
       const mat = mesh.material as THREE.MeshBasicMaterial;
       mat.opacity = on ? 0.4 : 1;
+      mat.needsUpdate = true;
+    }
+    // The planet tracks are metal rings drawn across the whole dial; in X-ray
+    // they would cross every wheel, so they fade with the plates.
+    for (const ring of this.planetRings) {
+      const mat = ring.material as THREE.MeshStandardMaterial;
+      mat.transparent = on;
+      mat.opacity = on ? 0.35 : 1;
       mat.needsUpdate = true;
     }
     this.labelGroup.visible = this.labels;

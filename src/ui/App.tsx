@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { mechanism } from '../core/mechanism';
 import { EPOCH_JD, DAYS_PER_YEAR, jdToJulian, julianToJD, formatJD, formatYear } from '../core/time';
 import SceneView from './SceneView';
+import { TRAIN_COLOURS, VIEW_NAMES } from '../three/scene';
 import { AboutPanel, AstronomyPanel, CalendarPanel, GearsPanel, GearInspector } from './panels';
 import ValidationPanel from './ValidationPanel';
 import type { ViewName } from '../three/scene';
@@ -15,14 +16,7 @@ const TABS = [
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
-const VIEWS: { id: ViewName; label: string }[] = [
-  { id: 'front', label: 'Frente' },
-  { id: 'back', label: 'Traseira' },
-  { id: 'side', label: 'Lateral' },
-  { id: 'top', label: 'Topo' },
-  { id: 'mechanism', label: 'Mecanismo' },
-  { id: 'exploded', label: 'Explodido' },
-];
+const VIEWS = VIEW_NAMES;
 
 /** One crank turn advances the drive wheel once: 223/48 lunations. */
 const DAYS_PER_CRANK_TURN = (DAYS_PER_YEAR.toNumber() * 48) / 223;
@@ -90,7 +84,9 @@ export default function App() {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(6); // mechanism days per second
   const [view, setView] = useState<ViewName>('front');
-  const [transparent, setTransparent] = useState(false);
+  const [xray, setXray] = useState(true);
+  const [explode, setExplode] = useState(1);
+  const [labels, setLabels] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [tab, setTab] = useState<TabId>('sky');
 
@@ -189,7 +185,15 @@ export default function App() {
 
       <main className="stage">
         <section className="viewport">
-          <SceneView readout={readout} view={view} transparent={transparent} selected={selected} onSelect={onSelect} />
+          <SceneView
+            readout={readout}
+            view={view}
+            xray={xray}
+            explode={explode}
+            labels={labels}
+            selected={selected}
+            onSelect={onSelect}
+          />
           <div className="view-switch">
             {VIEWS.map((v) => (
               <button key={v.id} className={view === v.id ? 'active' : ''} onClick={() => setView(v.id)}>
@@ -197,10 +201,39 @@ export default function App() {
               </button>
             ))}
           </div>
-          <button className={`ghost-toggle ${transparent ? 'on' : ''}`} onClick={() => setTransparent((t) => !t)}>
-            {transparent ? 'Opaco' : 'Raios X'}
-          </button>
-          <div className="scene-hint">arraste para orbitar · clique numa engrenagem para inspecionar</div>
+          <div className="view-tools">
+            <button className={xray ? 'active' : ''} onClick={() => setXray((v) => !v)} title="Transparência por trem">
+              {xray ? '◐ Raios X' : '● Sólido'}
+            </button>
+            <button className={labels ? 'active' : ''} onClick={() => setLabels((v) => !v)}>
+              Nomes
+            </button>
+            <label className="layer-slider" title="Afasta as rodas ao longo do eixo do mecanismo">
+              <span>camadas</span>
+              <input
+                type="range"
+                min={1}
+                max={2.6}
+                step={0.05}
+                value={explode}
+                onChange={(e) => setExplode(Number(e.target.value))}
+              />
+              <span className="mono">×{explode.toFixed(2)}</span>
+            </label>
+          </div>
+          {xray && (
+            <div className="legend">
+              {Object.entries(TRAIN_COLOURS).map(([key, t]) => (
+                <span key={key} className="legend-item">
+                  <i style={{ background: `#${t.hex.toString(16).padStart(6, '0')}` }} />
+                  {t.label}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="scene-hint">
+            arraste para orbitar · roda do rato para ampliar · clique numa engrenagem (clique outra vez para a que está atrás)
+          </div>
         </section>
 
         <aside className="sidebar">

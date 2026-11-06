@@ -335,3 +335,118 @@ export const makePointerGeometry = (length: number, width = 1.6) => {
   geo.translate(0, 0, -0.35);
   return geo;
 };
+
+// ── Environment, background and labels ───────────────────────────────────
+
+/**
+ * Procedural studio environment. Metal without an environment reads as black:
+ * a closed box of smooth bronze has almost nothing to reflect. This paints a
+ * simple equirectangular room — warm key above, cool fill opposite, dark floor
+ * with a soft horizon — which is what makes the wheels legible.
+ */
+export const makeEnvironmentTexture = (size = 1024): THREE.CanvasTexture => {
+  const c = makeCanvas(size);
+  c.width = size * 2;
+  c.height = size;
+  const g = c.getContext('2d')!;
+  const w = c.width;
+  const h = c.height;
+
+  const sky = g.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#3d4a5c');
+  sky.addColorStop(0.45, '#232a36');
+  sky.addColorStop(0.52, '#141821');
+  sky.addColorStop(1, '#07090d');
+  g.fillStyle = sky;
+  g.fillRect(0, 0, w, h);
+
+  const blob = (x: number, y: number, r: number, color: string, alpha: number) => {
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.globalAlpha = alpha;
+    g.fillStyle = grad;
+    g.fillRect(0, 0, w, h);
+    g.globalAlpha = 1;
+  };
+
+  // Key (upper right), fill (upper left), warm rim (behind) and a cool bounce.
+  blob(w * 0.72, h * 0.18, h * 0.62, '#ffe6bc', 0.95);
+  blob(w * 0.2, h * 0.24, h * 0.5, '#bcd6ff', 0.6);
+  blob(w * 0.46, h * 0.08, h * 0.4, '#fff4dd', 0.55);
+  blob(w * 0.05, h * 0.6, h * 0.45, '#2d4258', 0.5);
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+};
+
+/** Soft radial backdrop, so the mechanism is not floating on pure black. */
+export const makeBackdropTexture = (size = 1024): THREE.CanvasTexture => {
+  const c = makeCanvas(size);
+  const g = c.getContext('2d')!;
+  const R = size / 2;
+  const grad = g.createRadialGradient(R, R * 0.82, size * 0.02, R, R, R * 1.25);
+  grad.addColorStop(0, '#2b3442');
+  grad.addColorStop(0.35, '#1a2029');
+  grad.addColorStop(0.7, '#0d1117');
+  grad.addColorStop(1, '#06080b');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, size, size);
+  // A faint warm halo behind the dial, like a museum spotlight.
+  const halo = g.createRadialGradient(R, R * 0.9, 0, R, R * 0.9, R * 0.55);
+  halo.addColorStop(0, 'rgba(120, 96, 58, 0.35)');
+  halo.addColorStop(1, 'rgba(120, 96, 58, 0)');
+  g.fillStyle = halo;
+  g.fillRect(0, 0, size, size);
+  const tex = canvasTexture(c);
+  return tex;
+};
+
+/** A flat label that always faces the camera. */
+export const makeLabel = (text: string, subtitle = '', color = '#e8dcc0'): THREE.Sprite => {
+  const pad = 18;
+  const c = makeCanvas(512);
+  c.width = 512;
+  c.height = 160;
+  const g = c.getContext('2d')!;
+  g.clearRect(0, 0, c.width, c.height);
+  const w = 512;
+  const h = 160;
+  g.fillStyle = 'rgba(8, 10, 14, 0.72)';
+  g.strokeStyle = 'rgba(200, 165, 100, 0.55)';
+  g.lineWidth = 3;
+  const r = 20;
+  g.beginPath();
+  g.moveTo(pad + r, pad);
+  g.lineTo(w - pad - r, pad);
+  g.quadraticCurveTo(w - pad, pad, w - pad, pad + r);
+  g.lineTo(w - pad, h - pad - r);
+  g.quadraticCurveTo(w - pad, h - pad, w - pad - r, h - pad);
+  g.lineTo(pad + r, h - pad);
+  g.quadraticCurveTo(pad, h - pad, pad, h - pad - r);
+  g.lineTo(pad, pad + r);
+  g.quadraticCurveTo(pad, pad, pad + r, pad);
+  g.closePath();
+  g.fill();
+  g.stroke();
+  g.textAlign = 'center';
+  g.fillStyle = color;
+  g.font = '600 46px Georgia, serif';
+  g.fillText(text, w / 2, subtitle ? 78 : 96);
+  if (subtitle) {
+    g.fillStyle = 'rgba(226, 214, 190, 0.72)';
+    g.font = '30px Georgia, serif';
+    g.fillText(subtitle, w / 2, 122);
+  }
+  const tex = canvasTexture(c);
+  // depthTest stays on: a label must be hidden by the plate when you are
+  // looking at the other side of the machine.
+  const sprite = new THREE.Sprite(
+    new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true, depthWrite: false, opacity: 0.92 }),
+  );
+  sprite.scale.set(30, 9.4, 1);
+  sprite.renderOrder = 20;
+  return sprite;
+};

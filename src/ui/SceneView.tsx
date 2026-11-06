@@ -5,12 +5,14 @@ import type { Readout } from '../core/mechanism';
 interface Props {
   readout: Readout;
   view: ViewName;
-  transparent: boolean;
+  xray: boolean;
+  explode: number;
+  labels: boolean;
   selected: string | null;
   onSelect: (id: string | null) => void;
 }
 
-export default function SceneView({ readout, view, transparent, selected, onSelect }: Props) {
+export default function SceneView({ readout, view, xray, explode, labels, selected, onSelect }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const scene = useRef<MechanismScene | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +42,16 @@ export default function SceneView({ readout, view, transparent, selected, onSele
   }, [view]);
 
   useEffect(() => {
-    scene.current?.setTransparent(transparent);
-  }, [transparent]);
+    scene.current?.setXray(xray);
+  }, [xray]);
+
+  useEffect(() => {
+    scene.current?.setExplode(explode);
+  }, [explode]);
+
+  useEffect(() => {
+    scene.current?.setLabels(labels);
+  }, [labels]);
 
   useEffect(() => {
     scene.current?.select(selected);

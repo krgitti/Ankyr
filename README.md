@@ -104,6 +104,18 @@ por construção.
 
 ---
 
+## 3.1 Interface
+
+Na vista 3D: **Frente / Traseira / Lateral / Topo / Explodido**, arrastar para orbitar, roda do
+rato para ampliar, clique numa roda para a inspeccionar (clique repetido desce às rodas
+empilhadas por trás). No canto:
+
+- **◐ Raios X** — cada roda tingida pela cadeia a que pertence (legenda à direita), desenhada
+  com o seu círculo primitivo. O modo é *não iluminado*: não depende de luz nem de ambiente,
+  portanto nunca escurece.
+- **Nomes** — etiquetas dos cinco mostradores traseiros e dos dois anéis frontais.
+- **camadas** — afasta as rodas ao longo do eixo do mecanismo (×1 a ×2,6), para ver a pilha.
+
 ## 4. O que é evidência e o que é hipótese
 
 Todo o componente do modelo carrega um grau, exibido na interface e no catálogo:

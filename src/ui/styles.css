@@ -176,13 +176,28 @@ input:focus {
   min-width: 0;
   overflow: hidden;
 }
+/* A soft vignette, so the mechanism sits in a lit room instead of a void. */
+.viewport::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: radial-gradient(125% 95% at 50% 46%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.52) 100%);
+}
+.view-switch,
+.view-tools,
+.legend,
+.scene-hint {
+  z-index: 2;
+}
 .scene-host {
   position: absolute;
   inset: 0;
 }
 .view-switch {
   position: absolute;
-  left: 16px;
+  left: 14px;
   top: 14px;
   display: flex;
   gap: 4px;
@@ -192,20 +207,84 @@ input:focus {
   border: 1px solid var(--line);
   backdrop-filter: blur(6px);
 }
-.ghost-toggle {
+.view-tools {
   position: absolute;
-  right: 16px;
+  right: 14px;
   top: 14px;
-  background: rgba(12, 10, 8, 0.72);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 9px;
+  background: rgba(10, 13, 18, 0.78);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
 }
-.ghost-toggle.on {
+.view-tools button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--dim);
+}
+.view-tools button.active {
+  background: #2a2113;
   border-color: var(--bronze);
-  color: var(--bronze);
+  color: #f4e6c6;
+}
+.layer-slider {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px 0 4px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.layer-slider input[type='range'] {
+  width: 86px;
+  accent-color: var(--bronze);
+}
+.layer-slider .mono {
+  color: var(--dim);
+  min-width: 36px;
+  text-transform: none;
+}
+
+.legend {
+  position: absolute;
+  right: 14px;
+  top: 62px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 2px 12px;
+  padding: 9px 11px;
+  border-radius: 9px;
+  background: rgba(10, 13, 18, 0.72);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+  font-size: 10.5px;
+  color: var(--dim);
+  max-height: 44%;
+  overflow: hidden;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.legend-item i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+  flex: 0 0 auto;
 }
 .scene-hint {
   position: absolute;
-  left: 18px;
+  left: 16px;
   bottom: 12px;
+  right: 16px;
   font-size: 11px;
   color: var(--faint);
   letter-spacing: 0.03em;
@@ -215,6 +294,7 @@ input:focus {
 .scene-error {
   position: absolute;
   inset: 0;
+  z-index: 5;
   display: grid;
   place-content: center;
   gap: 10px;

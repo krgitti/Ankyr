@@ -233,7 +233,45 @@ do emulador.
   média (Δ é periódico de média nula): `tests/calibration.test.ts` verifica que mudar todas as
   fases deixa as taxas racionalmente idênticas.
 
-## 10. Constantes com proveniência
+## 10. Horizonte e eclipses locais
+
+A camada de horizonte não pertence ao mecanismo; serve para responder à pergunta que ele não
+sabe responder — *a que horas, e daqui, se veria isto?* Tudo parte das coordenadas
+equatoriais já calculadas em §9.
+
+**Tempo sideral.** Com T em séculos julianos desde J2000,
+
+$$\theta_0 = 280{,}46061837^\circ + 360{,}98564736629^\circ\,T + 0{,}000387933^\circ T^2$$
+
+(a 2451545,0 TD dá 280,4606°, o valor de referência). O ângulo horário de um astro é
+$H = \theta_0 + \lambda - \alpha$; a hora local escolhida entra na fracção do dia juliano.
+
+**Coordenadas horizontais**, com $\varphi$ a latitude:
+
+$$\sin h = \sin\varphi\sin\delta + \cos\varphi\cos\delta\cos H$$
+
+$$A = \operatorname{atan2}\big(\cos\delta\sin H,\ \cos\delta\cos H\sin\varphi - \sin\delta\cos\varphi\big) + 180^\circ$$
+
+O $+180^\circ$ é necessário: a forma clássica de Meeus (§13.5) mede o azimute a partir do Sul e
+no sentido do Oeste, e sem a correcção o Leste sairia a 355°. A convenção usada é a nossa —
+azimute a partir do Norte, crescendo para Leste — e é a razão pela qual as fórmulas de
+nascer e ocaso devolvem azimutes coerentes com o domo desenhado.
+
+**Nascer e ocaso** com $h_0 = -0{,}8333^\circ$ (refracção padrão e semidiâmetro solar) ou
+$+0{,}125^\circ$ para a Lua:
+
+$$\cos H_0 = \frac{\sin h_0 - \sin\varphi\sin\delta}{\cos\varphi\cos\delta}$$
+
+Falhando $|\cos H_0| \le 1$, o astro é circumpolar ou nunca nasce — o que acontece de facto
+acima do círculo polar e o painel di-lo em vez de inventar uma hora.
+
+**Eclipses locais.** A distância angular Lua–Sol no instante do máximo (Meeus §40, com
+paralaxe topocêntrica) decide a magnitude: $m = (s - d)/s$, onde $s$ é o semidiâmetro aparente
+do Sol e $d$ a separação. $m \ge 1$ é total, $0 < m < 1$ anular ou parcial conforme o caso.
+A procura do próximo eclipse usa uma porta geocêntrica $|\beta| < 1{,}55^\circ$ antes de
+qualquer cálculo topocêntrico, porque não vale a pena refinar um candidato que não existe.
+
+## 11. Constantes com proveniência
 
 | Constante | Valor | Fonte | Grau |
 | --- | --- | --- | --- |

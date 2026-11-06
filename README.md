@@ -114,9 +114,36 @@ empilhadas por trás). No canto:
   com o seu círculo primitivo. O modo é *não iluminado*: não depende de luz nem de ambiente,
   portanto nunca escurece.
 - **Nomes** — etiquetas dos cinco mostradores traseiros e dos dois anéis frontais.
+- **Placas** — tira a placa principal, o painel traseiro e a caixa, deixando só as rodas.
+- **Hipotéticas** — esconde as rodas de grau D (as que o artefacto não contém) e os seus aros.
+- **Bronze novo / Pátina** — acabamento do museu ou a superfície corroída: verde-cúprico mais
+  baço, com as rodas preservadas mais claras onde o bronze atravessou a corrosão.
 - **camadas** — afasta as rodas ao longo do eixo do mecanismo (×1 a ×2,6), para ver a pilha.
 
+Ao separar as camadas aparece, à direita, o **índice de planos**: os 31 planos de profundidade
+entre z = +37,0 e z = −34,5 mm, cada um com a cota em milímetros, o número de rodas que
+contém e uma marca colorida por cadeia; clicar num plano selecciona a primeira roda dele.
+Clicar numa roda abre um **cartão no próprio viewport** — dentes, grau, função, taxa, período,
+módulo e posição — com ligação à ficha completa. Clique repetido desce à roda seguinte no
+mesmo raio de visão.
+
+A barra de transporte tem presets (`hoje`, `Lua nova`, `Lua cheia`, `eclipse`), passos
+(`−1 d`, `+1 d`, `±1 mês` = uma lunação, `±1 ano`, `±1 Saros`, `+10 a`, `+1 século`), a manivela
+com relação 223/48 lunação por volta e uma entrada de hora do dia.
+
+O separador **Horizonte** acrescenta a única camada que o artefacto não tem: um lugar. Seis
+lugares (Siracusa, Rodes, Alexandria, Atenas, Anticítera, Babilónia) com altura e azimute do
+Sol e da Lua, nascer e ocaso com os respectivos azimutes, duração do dia e o veredicto do
+próximo eclipse — se é visível daquele lugar, com que magnitude topocêntrica e a que horas.
+
 ## 4. O que é evidência e o que é hipótese
+
+`src/core/provenance.ts` reúne as **13 afirmações** de que dependem todos os números do ecrã.
+Cada uma tem três colunas obrigatórias: o que foi **medido** no artefacto, o que é **derivado**
+dessa medição e o que foi **decidido** por nós (convenção, calibração, desenho), com o grau de
+evidência A–D da medição de base e a fonte. A tabela é apresentada tal e qual no separador
+*Acerca* — as três colunas nunca se fundem numa frase só, porque é exactamente aí que as
+reconstruções deste objecto costumam mentir.
 
 Todo o componente do modelo carrega um grau, exibido na interface e no catálogo:
 

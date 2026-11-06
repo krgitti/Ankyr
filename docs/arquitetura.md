@@ -53,6 +53,20 @@ andar para trás, saltar séculos e ser reproduzida bit a bit.
 | `validation.ts` | 57 verificações, relatório | não corrige o modelo |
 | `fit.ts` | ajuste das fases | só corre quando chamado |
 
+## Duas camadas que não se tocam
+
+`src/core/sky.ts` é a única parte do projecto que olha para o céu *a partir de um lugar*. Ela
+não calcula um único ângulo de roda: recebe o `Readout` do mecanismo e converte as suas
+longitudes em altura e azimute para uma latitude e hora escolhidas. É por isso que a regra
+“uma roda conduz tudo” continua verificável por inspecção — nenhum ficheiro de `sky.ts` importa
+`gears.ts` nem `kinematics.ts`.
+
+`src/core/provenance.ts` é a outra camada separada: uma tabela de 13 afirmações em que cada
+linha tem três colunas obrigatórias — o que foi **medido** no artefacto, o que é **derivado**
+dessa medição e o que foi **decidido** por nós. A interface mostra as três lado a lado, com o
+grau de evidência da medição de base. Nenhuma afirmação da terceira coluna aparece como se
+fosse da primeira.
+
 ## Separação entre verdade mecânica e referência moderna
 
 `ephemeris.ts` é a única fonte de posições "reais". É usada em dois lugares e só neles:

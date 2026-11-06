@@ -274,6 +274,7 @@ export default function App() {
               ))}
             </div>
           )}
+          {explode > 1.05 && <LayerLegend selected={selected} onSelect={(id) => setSelected(id)} />}
           {selected && <GearCard id={selected} onOpen={() => setTab('gears')} />}
           <div className="scene-hint">
             arraste para orbitar · roda do rato para ampliar · clique numa engrenagem (clique outra vez para a que está atrás)
@@ -385,6 +386,52 @@ function GearCard({ id, onOpen }: { id: string; onOpen: () => void }) {
       <button className="gear-card-open" onClick={onOpen}>
         ficha completa →
       </button>
+    </div>
+  );
+}
+
+/**
+ * Depth bands along the crank axis. Only shown while the layers are separated,
+ * because a depth list is meaningless when everything is stacked flat.
+ */
+const LAYER_BANDS: { z: number; ids: string[] }[] = (() => {
+  const bands = new Map<number, string[]>();
+  for (const row of gearRows()) {
+    const z = Math.round(placementOf(row.id).z * 2) / 2;
+    bands.set(z, [...(bands.get(z) ?? []), row.id]);
+  }
+  return [...bands.entries()]
+    .map(([z, ids]) => ({ z, ids }))
+    .sort((a, b) => b.z - a.z);
+})();
+
+const TRAIN_OF = new Map(
+  gearRows().map((row) => [row.id, `#${(TRAIN_COLOURS[row.train]?.hex ?? 0x8a8f98).toString(16).padStart(6, '0')}`]),
+);
+
+function LayerLegend({ selected, onSelect }: { selected: string | null; onSelect: (id: string) => void }) {
+  return (
+    <div className="layer-legend">
+      <div className="layer-legend-head">
+        <b>{LAYER_BANDS.length} planos</b>
+        <span>z · mm</span>
+      </div>
+      {LAYER_BANDS.map((band) => (
+        <button
+          key={band.z}
+          className={band.ids.includes(selected ?? '') ? 'active' : ''}
+          onClick={() => onSelect(band.ids[0])}
+          title={band.ids.join(' · ')}
+        >
+          <span className="mono">{band.z >= 0 ? '+' : ''}{band.z.toFixed(1)}</span>
+          <span className="layer-ticks">
+            {band.ids.slice(0, 8).map((id) => (
+              <i key={id} style={{ background: TRAIN_OF.get(id) ?? '#8a8f98' }} />
+            ))}
+          </span>
+          <span className="mono dim">{band.ids.length}</span>
+        </button>
+      ))}
     </div>
   );
 }

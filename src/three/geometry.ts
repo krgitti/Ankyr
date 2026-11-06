@@ -141,10 +141,12 @@ export const makeZodiacTexture = (size = 2048, style: DialStyle = {}): THREE.Can
     g.save();
     g.rotate((a0 + a1) / 2);
     g.fillStyle = ink;
-    g.font = `${Math.round(size / 34)}px Georgia, serif`;
+    // Names sit between the inner edge (66.5 mm of 80) and the degree ticks,
+    // so the text is not clipped by the ring's hole.
+    g.font = `${Math.round(size / 42)}px Georgia, serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(names[11 - i], R * 0.845, 0);
+    g.fillText(names[11 - i], R * 0.878, 0);
     g.restore();
     void a1;
   }
